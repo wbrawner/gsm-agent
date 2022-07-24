@@ -26,17 +26,7 @@ fn cd(destination: &str) -> String {
 fn ls() -> String {
     let mut files: Vec<String> = Vec::new();
     let mut paths: Vec<DirEntry> = fs::read_dir(pwd()).unwrap().map(|r| r.unwrap()).collect();
-    paths.sort_by(|a, b| {
-        let a_is_dir = a.file_type().unwrap().is_dir();
-        let b_is_dir = b.file_type().unwrap().is_dir();
-        if a_is_dir && !b_is_dir {
-            Ordering::Less
-        } else if !a_is_dir && b_is_dir {
-            Ordering::Greater
-        } else {
-            a.file_name().cmp(&b.file_name())
-        }
-    });
+    paths.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
     for file in paths {
         files.push(file.file_name().into_string().unwrap());
     }
