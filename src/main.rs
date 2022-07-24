@@ -17,8 +17,41 @@ fn main() {
     }
 }
 
-fn cwd() -> String {
+fn cd(destination: &str) -> String {
+    let path = Path::new(destination);
+    env::set_current_dir(path).unwrap();
+    pwd()
+}
+
+fn ls() -> String {
+    let mut files: Vec<String> = Vec::new();
+    let mut paths: Vec<DirEntry> = fs::read_dir(pwd()).unwrap().map(|r| r.unwrap()).collect();
+    paths.sort_by(|a, b| {
+        let a_is_dir = a.file_type().unwrap().is_dir();
+        let b_is_dir = b.file_type().unwrap().is_dir();
+        if a_is_dir && !b_is_dir {
+            Ordering::Less
+        } else if !a_is_dir && b_is_dir {
+            Ordering::Greater
+        } else {
+            a.file_name().cmp(&b.file_name())
+        }
+    });
+    for file in paths {
+        files.push(file.file_name().into_string().unwrap());
+    }
+    files.join("\n")
+}
+
+fn pwd() -> String {
     env::current_dir().unwrap().to_string_lossy().to_string()
+}
+
+fn shell<'a, T>(command: &str, args: T) -> String
+where
+    T: Iterator<Item = &'a str>,
+{
+    String::from_utf8(Command::new(command).args(args).output().unwrap().stdout).unwrap()
 }
 
 fn handle_connection(mut stream: TcpStream) {
@@ -31,41 +64,11 @@ fn handle_connection(mut stream: TcpStream) {
     let mut command_iter = request.split_whitespace();
     let command = command_iter.next().unwrap();
     let response: String = match command {
-        "cd" => {
-            let path = Path::new(command_iter.next().unwrap());
-            env::set_current_dir(path).unwrap();
-            cwd()
-        }
-        "ls" => {
-            let mut files: Vec<String> = Vec::new();
-            let mut paths: Vec<DirEntry> =
-                fs::read_dir(cwd()).unwrap().map(|r| r.unwrap()).collect();
-            paths.sort_by(|a, b| {
-                let a_is_dir = a.file_type().unwrap().is_dir();
-                let b_is_dir = b.file_type().unwrap().is_dir();
-                if a_is_dir && !b_is_dir {
-                    Ordering::Less
-                } else if !a_is_dir && b_is_dir {
-                    Ordering::Greater
-                } else {
-                    a.file_name().cmp(&b.file_name())
-                }
-            });
-            for file in paths {
-                files.push(file.file_name().into_string().unwrap());
-            }
-            files.join("\n")
-        }
+        "cd" => cd(command_iter.next().unwrap()),
+        "ls" => ls(),
         "ping" => String::from("pong"),
-        "pwd" => cwd(),
-        "shell" => String::from_utf8(
-            Command::new(command_iter.next().unwrap())
-                .args(command_iter)
-                .output()
-                .unwrap()
-                .stdout,
-        )
-        .unwrap(),
+        "pwd" => pwd(),
+        "shell" => shell(command_iter.next().unwrap(), command_iter),
         _ => {
             format!(
                 "unknown command: {:?}",
