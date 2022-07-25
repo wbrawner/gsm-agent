@@ -54,28 +54,39 @@ where
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let mut buffer = [0; 1024];
-    stream.read(&mut buffer).unwrap();
-    let mut request: &str = &String::from_utf8(buffer.to_vec()).unwrap();
-    request = request.trim();
-    let trim_chars = [' ', '\n', '\0'];
-    request = request.trim_matches(&trim_chars[..]);
-    let mut command_iter = request.split_whitespace();
-    let command = command_iter.next().unwrap();
-    let response: String = match command {
-        "cat" => cat(command_iter.next().unwrap()),
-        "cd" => cd(command_iter.next().unwrap()),
-        "ls" => ls(),
-        "ping" => String::from("pong"),
-        "pwd" => pwd(),
-        "shell" => shell(command_iter.next().unwrap(), command_iter),
-        _ => {
-            format!(
-                "unknown command: {:?}",
-                request.split_whitespace().next().unwrap_or("")
-            )
+    loop {
+        let mut buffer = [0; 1024];
+        stream
+            .read(&mut buffer)
+            .expect("Failed to read from socket");
+        let mut request: &str =
+            &String::from_utf8(buffer.to_vec()).expect("Failed to convert command to string");
+        request = request.trim();
+        let trim_chars = [' ', '\n', '\0'];
+        request = request.trim_matches(&trim_chars[..]);
+        let mut command_iter = request.split_whitespace();
+        match command_iter.next() {
+            Some(command) => {
+                let response: String = match command {
+                    "cat" => cat(command_iter.next().unwrap()),
+                    "cd" => cd(command_iter.next().unwrap()),
+                    "ls" => ls(),
+                    "ping" => String::from("pong"),
+                    "pwd" => pwd(),
+                    "shell" => shell(command_iter.next().unwrap(), command_iter),
+                    _ => {
+                        format!(
+                            "unknown command: {:?}",
+                            request.split_whitespace().next().unwrap_or("")
+                        )
+                    }
+                };
+                stream.write(format!("{}\n", response).as_bytes()).unwrap();
+                stream.flush().unwrap();
+            }
+            None => {
+                return;
+            }
         }
-    };
-    stream.write(format!("{}\n", response).as_bytes()).unwrap();
-    stream.flush().unwrap();
+    }
 }
