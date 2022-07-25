@@ -27,10 +27,13 @@ fn cat(path: &str) -> String {
     String::from_utf8(fs::read(path).unwrap()).unwrap()
 }
 
-fn cd(destination: &str) -> String {
+fn cd(destination: &str) -> Result<String, std::io::Error> {
+    // TODO: Change path per-worker instead of globally
     let path = Path::new(destination);
-    env::set_current_dir(path).unwrap();
-    pwd()
+    match env::set_current_dir(path) {
+        Ok(_) => Ok(pwd()),
+        Err(e) => Err(e),
+    }
 }
 
 fn get(url: &str, destination: &str) -> Result<(), Box<dyn Error>> {
@@ -79,7 +82,10 @@ fn handle_connection(mut stream: TcpStream) {
             Some(command) => {
                 let response: String = match command {
                     "cat" => cat(command_iter.next().unwrap()),
-                    "cd" => cd(command_iter.next().unwrap()),
+                    "cd" => match cd(command_iter.next().unwrap()) {
+                        Ok(s) => s.to_string(),
+                        Err(e) => e.to_string(),
+                    },
                     "get" => {
                         match get(command_iter.next().unwrap(), command_iter.next().unwrap()) {
                             Ok(_) => String::new(),
