@@ -1,4 +1,5 @@
 use std::env;
+use std::error::Error;
 use std::fs;
 use std::fs::DirEntry;
 use std::io::Read;
@@ -30,6 +31,15 @@ fn cd(destination: &str) -> String {
     let path = Path::new(destination);
     env::set_current_dir(path).unwrap();
     pwd()
+}
+
+fn get(url: &str, destination: &str) -> Result<(), Box<dyn Error>> {
+    let response = minreq::get(url).send()?;
+    let path = Path::new(destination);
+    match fs::write(path, response.as_bytes()) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(Box::new(e)),
+    }
 }
 
 fn ls() -> String {
@@ -70,6 +80,12 @@ fn handle_connection(mut stream: TcpStream) {
                 let response: String = match command {
                     "cat" => cat(command_iter.next().unwrap()),
                     "cd" => cd(command_iter.next().unwrap()),
+                    "get" => {
+                        match get(command_iter.next().unwrap(), command_iter.next().unwrap()) {
+                            Ok(_) => String::new(),
+                            Err(e) => (*e).to_string(),
+                        }
+                    },
                     "ls" => ls(),
                     "ping" => String::from("pong"),
                     "pwd" => pwd(),
