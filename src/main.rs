@@ -21,6 +21,11 @@ fn main() {
     }
 }
 
+fn cat(path: &str) -> String {
+    let path = Path::new(path);
+    String::from_utf8(fs::read(path).unwrap()).unwrap()
+}
+
 fn cd(destination: &str) -> String {
     let path = Path::new(destination);
     env::set_current_dir(path).unwrap();
@@ -58,6 +63,7 @@ fn handle_connection(mut stream: TcpStream) {
     let mut command_iter = request.split_whitespace();
     let command = command_iter.next().unwrap();
     let response: String = match command {
+        "cat" => cat(command_iter.next().unwrap()),
         "cd" => cd(command_iter.next().unwrap()),
         "ls" => ls(),
         "ping" => String::from("pong"),
