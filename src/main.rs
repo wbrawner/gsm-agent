@@ -15,7 +15,7 @@ use telnet::Event;
 use telnet::Telnet;
 
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:4762").unwrap();
+    let listener = TcpListener::bind("0.0.0.0:4762").unwrap();
     let pool = ThreadPool::new(4);
     for stream in listener.incoming() {
         match stream {
