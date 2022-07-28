@@ -112,7 +112,7 @@ fn handle_connection(mut stream: TcpStream) {
         let mut request: &str =
             &String::from_utf8(buffer.to_vec()).expect("Failed to convert command to string");
         request = request.trim();
-        let trim_chars = [' ', '\n', '\0'];
+        let trim_chars = [' ', '\r', '\n', '\0'];
         request = request.trim_matches(&trim_chars[..]);
         let mut command_iter = request.split_whitespace();
         match command_iter.next() {
