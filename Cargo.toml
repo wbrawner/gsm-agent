@@ -10,3 +10,4 @@ lto = true
 
 [dependencies]
 minreq = { version = "2.6.0", features = ["https"] }
+telnet = "0.2.1"

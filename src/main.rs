@@ -8,8 +8,11 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
 
 use gsm_agent::ThreadPool;
+use telnet::Event;
+use telnet::Telnet;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:4762").unwrap();
@@ -68,6 +71,38 @@ where
     String::from_utf8(Command::new(command).args(args).output().unwrap().stdout).unwrap()
 }
 
+fn telnet(stream: &mut TcpStream, host: &str, port: &u16) -> Result<String, std::io::Error> {
+    let mut telnet = Telnet::connect((host, *port), 4096)?;
+    let mut stream_buffer = [0; 4096];
+    stream.set_read_timeout(Some(Duration::new(1, 0)))?;
+    'main: loop {
+        match stream.read(&mut stream_buffer) {
+            Ok(read) => {
+                match String::from_utf8_lossy(&stream_buffer[0..read])
+                    .as_ref()
+                    .trim()
+                {
+                    "quit" => break 'main,
+                    _ => telnet.write(&stream_buffer[0..read]).unwrap(),
+                };
+            }
+            Err(_) => {}
+        };
+        match telnet.read_timeout(Duration::new(1, 0)) {
+            Ok(event) => {
+                if let Event::Data(buffer) = event {
+                    stream.write(&buffer).unwrap();
+                }
+            }
+            Err(e) => {
+                println!("telnet read error: {:?}\n", e);
+                break 'main;
+            }
+        }
+    }
+    Ok(String::from("Telnet connection closed"))
+}
+
 fn handle_connection(mut stream: TcpStream) {
     loop {
         let mut buffer = [0; 1024];
@@ -104,6 +139,14 @@ fn handle_connection(mut stream: TcpStream) {
                     "ping" => String::from("pong"),
                     "pwd" => pwd(),
                     "shell" => shell(command_iter.next().unwrap(), command_iter),
+                    "telnet" => {
+                        let host = command_iter.next().unwrap();
+                        let port = u16::from_str_radix(command_iter.next().unwrap(), 10).unwrap();
+                        match telnet(&mut stream, host, &port) {
+                            Ok(s) => s,
+                            Err(e) => e.to_string(),
+                        }
+                    }
                     _ => {
                         format!(
                             "unknown command: {:?}",
