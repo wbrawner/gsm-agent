@@ -119,7 +119,7 @@ fn handle_connection(mut stream: TcpStream) {
             Some(command) => {
                 let response: String = match command {
                     "cat" => cat(command_iter.next().unwrap()),
-                    "cd" => match cd(command_iter.next().unwrap()) {
+                    "cd" => match cd(&request[3..]) {
                         Ok(s) => s.to_string(),
                         Err(e) => e.to_string(),
                     },
